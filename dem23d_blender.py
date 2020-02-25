@@ -2,6 +2,8 @@
 usage = "blender --background --python {} --".format(__file__)
 
 import sys
+import os
+import subprocess
 
 try:
     import bpy
@@ -12,7 +14,7 @@ except ModuleNotFoundError:
 def set_scene_scale():
     """Change units from m -> mm"""
     bpy.context.scene.unit_settings.scale_length = 0.001
-
+    bpy.context.scene.unit_settings.length_unit = 'MILLIMETERS'
 
 def clear_all():
     """Clear the scene for a fresh start"""
@@ -48,7 +50,14 @@ class Dem3D():
         bpy.ops.object.modifier_add(type='DISPLACE')
         displace = bpy.context.object.modifiers['Displace']
         displace.mid_level = 0
-        displace.strength = self.strength
+
+        # Divide by 2 so the mountains come out the right size.
+        # I'm not sure what's going on in Blender's scaling algorithm,
+        # because I'm feeding in numbers in the thousands, and get "normal"
+        # displacement.  They made sense when I was making 10x10cm models,
+        # but now that the model is 20x20cm, mountains are twice as tall as
+        # they should be?
+        displace.strength = self.strength / 2
         displace.texture = height_map
         
         bpy.ops.object.modifier_apply(modifier='Displace')
@@ -139,21 +148,31 @@ def main():
 
     # Get image from s3
     if args.s3_bucket:
-        input_image, output_stl = 'height.tif', 'model.stl'
+        output_stl = 'height.tif'
+        input_image = os.path.basename(args.input_image)
 
         import boto3
         s3 = boto3.client('s3')
-        s3.download_file(args.s3_bucket, input_image, input_image)
+        s3.download_file(args.s3_bucket, args.input_image, input_image)
     else:
         input_image = args.input_image
         output_stl = args.output_stl
 
-    model = Dem3D(args.input_image,
+    if input_image.endswith('.xz'):
+        subprocess.call(('xz', '-d', input_image))
+        input_image = input_image[:-3]
+
+    model = Dem3D(input_image,
                   strength=args.strength,
                   final_size=args.final_size,
                   subdivisions=args.subdivisions,
                   base_height=args.base_height)
-    model.to_stl(args.output_stl)
+
+    if output_stl.endswith('.xz'):
+        model.to_stl(output_stl[:-3])
+        subprocess.call(('xz', output_stl[:-3]))
+    else:
+        model.to_stl(output_stl)
 
     # Upload result
     if args.s3_bucket:

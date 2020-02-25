@@ -1,24 +1,33 @@
 #!/bin/bash
 if [ -z "$1" ]; then
-	echo "usage: $0 srcfile id"
+	echo "usage: $0 id"
 	exit 1
 fi
 set -eux
 
+GIS_DIR=/home/jeff/running_gis/
+
 id=$1
-srcfile=../cdem_canada/merged/cdem_bc_merged_virt.vrt
+srcfile="$GIS_DIR"/cdem_canada/merged/cdem_bc_merged_virt.vrt
+sql="$GIS_DIR"/bc3d_grid.sqlite
 tmpdir=$(mktemp -d)
-dstfile=$id/cdem_utm.tif
+function cleanup {
+	rm -rf "$tmpdir"
+}
+trap cleanup EXIT
+
+id_pad=$(printf "%03d" "$id")
+
+dstfile="$GIS_DIR"/bc3d_models/all/tile"$id_pad"_cdem.utm.tif
 
 rm -f "$dstfile"
 
-xmin=$(sqlite3 grid.sqlite "select left from grid where id = $id")
-xmax=$(sqlite3 grid.sqlite "select right from grid where id = $id")
-ymin=$(sqlite3 grid.sqlite "select bottom from grid where id = $id")
-ymax=$(sqlite3 grid.sqlite "select top from grid where id = $id")
+xmin=$(sqlite3 "$sql" "select left from grid where ogc_fid = $id")
+xmax=$(sqlite3 "$sql" "select right from grid where ogc_fid = $id")
+ymin=$(sqlite3 "$sql" "select bottom from grid where ogc_fid = $id")
+ymax=$(sqlite3 "$sql" "select top from grid where ogc_fid = $id")
 
 warped="$tmpdir"/warped.tif
-mkdir -p $id
 gdalwarp \
 	-t_srs EPSG:32610 \
 	-te "$xmin" "$ymin" "$xmax" "$ymax" \
@@ -26,11 +35,21 @@ gdalwarp \
 	"$srcfile" "$warped"
 
 raised="$tmpdir"/raised.tif
-# Raise everything up by 34
-gdal_calc.py --calc="A+34" --outfile="$raised" -A "$warped"
+# Raise everything up by one layer.  35m * 3 / 1e6 ~= 0.1mm
+gdal_calc.py \
+	--NoDataValue=0 \
+	--quiet \
+	--calc="A+35" \
+	-A "$warped" \
+	--outfile="$raised"
 
 # Drop the ocean back down to 0
-gdal_rasterize -burn 0 ../water-polygons-split-4326/water_polygons.sqlite "$raised"
+gdal_rasterize \
+	-burn 0 \
+	"$GIS_DIR"/water-polygons-split-4326/water_polygons.sqlite "$raised"
 
 # Copy over destination
 cp "$raised" "$dstfile"
+
+#xz -k "$dstfile"
+
