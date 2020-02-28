@@ -10,6 +10,7 @@ from tempfile import mkdtemp
 import boto3
 s3 = boto3.client('s3')
 
+# Global lock required for multiprocessing.
 mutex = mp.Lock()
 
 S3_BUCKET = 'jefftaylor-maps'
@@ -17,6 +18,10 @@ S3_BUCKET = 'jefftaylor-maps'
 TIF_FORMAT = 'bc3d_tifs/tile{tile:03}_cdem.utm.tif.xz'
 DEST_PREFIX = 'bc3d_tiles/tile'
 STL_FORMAT = DEST_PREFIX + '{tile:03}_{strength}x_{subdivisions}.stl.xz'
+
+def call(prog, *args, **kwargs):
+    print('@ ' + ' '.join(prog))
+    subprocess.call(prog, *args, **kwargs)
 
 def process(params):
     """Download files, extract, process, compress, and upload result"""
@@ -28,7 +33,7 @@ def process(params):
     s3.download_file(S3_BUCKET, s3_tif_xz, tif_xz)
 
     tif = tif_xz[:-3]
-    subprocess.call(('xz', '-d', tif_xz))
+    call(('xz', '-d', tif_xz))
 
     # Run Blender in a critical section, since we provision a node based on
     # its peak memory usage.
@@ -36,10 +41,13 @@ def process(params):
     with mutex:
         blender_cmd = ('blender', '--background', '--python',
                        'dem23d_blender.py', '--')
-        subprocess.call(blender_cmd + extra_args + (tif, stl))
+        blender_cmd += extra_args
+        blender_cmd += (tif, stl)
+        print('Running: ' + ' '.join(blender_cmd))
+        call(blender_cmd)
 
     stl_xz = stl + '.xz'
-    subprocess.call(('xz', stl))
+    call(('xz', stl))
 
     # Upload stl.xz to AWS
     s3.upload_file(stl_xz, S3_BUCKET, s3_stl_xz)
@@ -95,6 +103,7 @@ def main():
             if obj_list.exists(s3_stl_xz):
                 continue
 
+            print('Processing tile {:03}'.format(tile))
             yield s3_tif_xz, s3_stl_xz, extra_args
 
     list(pool.imap_unordered(process, get_jobs()))
