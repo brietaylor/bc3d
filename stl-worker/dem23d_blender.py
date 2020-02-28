@@ -102,9 +102,9 @@ class Dem3D():
         self.fill_base()
         self.simplify()
 
-    def __init__(self, img_path, strength=3,
-                 final_size=200, subdivisions=100,
-                 base_height=0.2):
+    def __init__(self, img_path, strength,
+                 final_size, subdivisions,
+                 base_height):
         self.img_path = img_path
         self.strength = strength
         self.final_size = final_size
