@@ -1,0 +1,17 @@
+version: 1
+task_definition:
+  task_execution_role: ecsTaskExecutionRole
+  task_role_arn: arn:aws:iam::241748083751:role/bc3d-ecs
+  ecs_network_mode: awsvpc
+  task_size:
+    mem_limit: 30GB
+    cpu_limit: 4096
+run_params:
+  network_configuration:
+    awsvpc_configuration:
+      subnets:
+        - subnet-02728a5f # Default 172.31.0.0/20
+      security_groups:
+        #- sg-0e607257 # Default allow all traffic
+        - sg-058b3aa052c227a5d # deny-all
+      assign_public_ip: ENABLED

@@ -1,0 +1,18 @@
+version: '3'
+services:
+  bc3d-demproc:
+    image: jefftaylor42/bc3d_demproc
+    entrypoint: "./worker.py --subdivisions 2000 --strength 3 --base-height .2 38 39 29 37 30 46"
+    #resources:
+    #  limits:
+    #    cpus: '1'
+    #    memory: '8G'
+    #  reservations:
+    #    cpus: '.5'
+    #    memory: '1G'
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: bc3d
+        awslogs-region: us-west-2
+        awslogs-stream-prefix: bc3d-blender
