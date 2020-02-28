@@ -1,0 +1,13 @@
+FROM fedora:31
+
+RUN dnf upgrade -y
+RUN dnf install -y blender python3-boto3 xz awscli
+
+WORKDIR /opt/
+
+ADD dem23d_blender.py .
+ADD worker.py .
+
+#CMD ["./worker.py", --subdivisions, 100, 26, 27, 28, 29, 30, 34, 35, 36, 37, 38]
+CMD ["./worker.py", "--subdivisions", "100", "38"]
+

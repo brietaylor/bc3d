@@ -1,15 +1,17 @@
 #!/bin/bash
+# Create warped DEM tiles from a single merged source.
+
 if [ -z "$1" ]; then
 	echo "usage: $0 id"
 	exit 1
 fi
 set -eux
 
-GIS_DIR=/home/jeff/running_gis/
+gis_dir=/home/jeff/running_gis/
 
 id=$1
-srcfile="$GIS_DIR"/cdem_canada/merged/cdem_bc_merged_virt.vrt
-sql="$GIS_DIR"/bc3d_grid.sqlite
+srcfile="$gis_dir"/cdem_canada/merged/cdem_bc_merged_virt.vrt
+sql="$gis_dir"/bc3d_grid.sqlite
 tmpdir=$(mktemp -d)
 function cleanup {
 	rm -rf "$tmpdir"
@@ -18,7 +20,7 @@ trap cleanup EXIT
 
 id_pad=$(printf "%03d" "$id")
 
-dstfile="$GIS_DIR"/bc3d_models/all/tile"$id_pad"_cdem.utm.tif
+dstfile="$gis_dir"/bc3d_models/all/tile"$id_pad"_cdem.utm.tif
 
 rm -f "$dstfile"
 
@@ -46,7 +48,7 @@ gdal_calc.py \
 # Drop the ocean back down to 0
 gdal_rasterize \
 	-burn 0 \
-	"$GIS_DIR"/water-polygons-split-4326/water_polygons.sqlite "$raised"
+	"$gis_dir"/water-polygons-split-4326/water_polygons.sqlite "$raised"
 
 # Copy over destination
 cp "$raised" "$dstfile"
