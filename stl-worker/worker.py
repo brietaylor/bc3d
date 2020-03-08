@@ -59,12 +59,15 @@ def parse_args():
                         help="Number of grid points in each axis")
     parser.add_argument('--strength', type=float, default=3,
                         help="Terrain exaggeration")
+    parser.add_argument('--base-height', type=float, default=.1,
+                        help="Base height in mm")
     parser.add_argument('tiles', type=int, nargs='+',
                         help="List of tiles to process")
 
-    args, extra_args = parser.parse_known_args()
-    extra_args += ('--strength', str(args.strength))
+    args = parser.parse_args()
+    extra_args = ('--strength', str(args.strength))
     extra_args += ('--subdivisions', str(args.subdivisions))
+    extra_args += ('--base-height', str(args.base_height))
 
     return args, tuple(extra_args)
 

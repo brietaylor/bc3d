@@ -133,7 +133,7 @@ def parse_args():
                         help="Number of grid points in each axis")
     parser.add_argument('--strength', type=float, default=3,
                         help="Terrain exaggeration")
-    parser.add_argument('--base_height', type=float, default=.1,
+    parser.add_argument('--base-height', type=float, default=.1,
                         help="Base height in mm")
 
     return parser.parse_args(shift_argv(sys.argv))
